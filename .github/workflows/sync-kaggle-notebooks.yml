@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      KAGGLE_NOTEBOOK_DIR: kaggle-notebooks
 
     steps:
       - name: Checkout repository
@@ -30,17 +32,17 @@ jobs:
           KAGGLE_NOTEBOOK: ${{ vars.KAGGLE_NOTEBOOK }}
         run: |
           if [ -z "$KAGGLE_NOTEBOOK" ]; then
-            echo "Repository variable KAGGLE_NOTEBOOK is required (format: <owner>/<kernel-slug>)."
+            echo "Error: Repository variable KAGGLE_NOTEBOOK is not set. The workflow cannot proceed without this configuration (format: <owner>/<kernel-slug>)."
             exit 1
           fi
-          mkdir -p kaggle-notebooks
-          kaggle kernels pull "$KAGGLE_NOTEBOOK" -p kaggle-notebooks
+          mkdir -p "$KAGGLE_NOTEBOOK_DIR"
+          kaggle kernels pull "$KAGGLE_NOTEBOOK" -p "$KAGGLE_NOTEBOOK_DIR"
 
       - name: Commit and push changes
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add kaggle-notebooks
+          git add "$KAGGLE_NOTEBOOK_DIR"
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
