@@ -1,0 +1,51 @@
+name: Sync Kaggle Notebooks
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      KAGGLE_NOTEBOOK_DIR: kaggle-notebooks
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install kaggle
+        run: pip install kaggle
+
+      - name: Download Kaggle notebook
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          KAGGLE_NOTEBOOK: ${{ vars.KAGGLE_NOTEBOOK }}
+        run: |
+          if [ -z "$KAGGLE_NOTEBOOK" ]; then
+            echo "Error: Repository variable KAGGLE_NOTEBOOK is not set. The workflow cannot proceed without this configuration (format: <owner>/<kernel-slug>)."
+            exit 1
+          fi
+          mkdir -p "$KAGGLE_NOTEBOOK_DIR"
+          kaggle kernels pull "$KAGGLE_NOTEBOOK" -p "$KAGGLE_NOTEBOOK_DIR"
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add "$KAGGLE_NOTEBOOK_DIR"
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update Kaggle notebooks"
+            git push
+          fi
